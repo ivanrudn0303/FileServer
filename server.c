@@ -1,21 +1,18 @@
 #include "Init.h"
 
-#define CONN_LIMIT 10
+#define CONN_LIMIT 17
 
-struct conn_str
-{
-	int id;
-	int conn_fd;
-
-};
-
-void* create_conn (void* conn_args) {
-
-} 
 
 int main (int argc, char const *argv[]) {
 	struct sockaddr_in servaddr, cliaddr; 
 	int sock_fd, conn_fd;
+	storage_elem** storage = (storage_elem**)malloc(sizeof(storage_elem*) * CONN_LIMIT);
+	int i = 0;
+
+	for (i = 0; i < CONN_LIMIT; i++) {
+		storage[i] = (storage_elem*)malloc(sizeof(storage_elem));
+		memset(storage[i], 0, sizeof(storage_elem));
+	}
 
 	arguments* args = (arguments*)malloc(sizeof(arguments));
 
@@ -23,22 +20,19 @@ int main (int argc, char const *argv[]) {
 
 	sock_fd = create_sock_server(args);
 
-	pthread_t conns [CONN_LIMIT];
-	struct conn_str conn_args [CONN_LIMIT]; 
 	int len = sizeof(cliaddr);
 	int id = 0;
+	int conn_count = 0;
 
 	while ((conn_fd = accept(sock_fd, (struct sockaddr_in *) &cliaddr, &len) > 0)) {
-		conn_args[id].id = id;
-		conn_args[id].conn_fd = conn_fd;
-		pthread_create(&conns[id], NULL, create_conn, &conn_args[id]);
-		id++; // not nice: when some client disconnects it should be taken in account
-		      // and the next connection should refer to some of previously used conns
-			  // better: have a pull of ids and new client takes the first free one
+		if (id = client_authorization(conn_fd)) {
+			resume_download(conn_fd, id, storage);
+		} else {
+			id = ++conn_count;
+			start_download(conn_fd, id, storage);
+		}
 	}
-
-	for (int i = 0; i < CONN_LIMIT; i++) 
-		pthread_join(conns[i]);
+	free(args);
 	close(sock_fd);
 	return 0;
 }
