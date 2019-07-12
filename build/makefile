@@ -2,7 +2,7 @@ CC = gcc
 BASE = ..
 INC = ${BASE}
 
-all: test_init test_talk
+all: server test_init test_talk
 
 
 Init.o: ${BASE}/Init.c
@@ -22,5 +22,13 @@ Talk.o: ${BASE}/Talk.c
 uTalk.o: ${BASE}/test/uTalk.c
 	${CC} -I${INC}/ -c ${BASE}/test/uTalk.c
 
+server.o: ${BASE}/server.c
+	${CC} -I${INC}/ -c ${BASE}/server.c
+
+server_funcs.o: ${BASE}/server_funcs.c
+	${CC} -I${INC}/ -c ${BASE}/server_funcs.c
+
+server: Init.o server.o server_funcs.o
+	${CC} -o out_server Init.o server.o server_funcs.o
 clean:
 	-rm -rf out* *.o
