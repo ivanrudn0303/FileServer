@@ -17,6 +17,7 @@ typedef struct
 } arguments;
 
 int args_parse(const char* argv[], int argc, arguments* res);
+int create_sock_client();
 int create_sock_server(arguments* args);
 uint32_t get_id();
 
