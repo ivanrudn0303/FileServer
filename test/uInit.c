@@ -1,4 +1,5 @@
 #include "Init.h"
+#include "Macro.h"
 #include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,28 +15,26 @@ int main()
 	data[4] = "-p";
 	data[5] = "5";
 
-	if(args_parse(data, 4, &tmp))
-		printf("error: case1\n");
-	if((0 != strcmp(tmp.file, "name")) || (500 != ntohs(tmp.port)) || (16909060 != ntohl(tmp.addr.s_addr)))
-		printf("error: case1\n");
+	CHECK_EQUAL(args_parse(data, 4, &tmp), 0)
+	CHECK_EQUAL(strcmp(tmp.file, "name"), 0)
+	CHECK_EQUAL(ntohs(tmp.port), 500)
+	CHECK_EQUAL(ntohl(tmp.addr.s_addr), 16909060)
 
 	data[1] = "1.2.3.4";
-	if(args_parse(data, 6, &tmp))
-		printf("error: case2\n");
-	if((0 != strcmp(tmp.file, "name")) || (5 != ntohs(tmp.port)) || (16909060 != ntohl(tmp.addr.s_addr)))
-		printf("error: case2\n");
+	CHECK_EQUAL(args_parse(data, 6, &tmp), 0)
+	CHECK_EQUAL(strcmp(tmp.file, "name"), 0)
+	CHECK_EQUAL(ntohs(tmp.port), 5)
+	CHECK_EQUAL(ntohl(tmp.addr.s_addr), 16909060)
 
 	data[5] = "500";
-	if(args_parse(data + 4, 2, &tmp))
-		printf("error: case3\n");
-	if((NULL != tmp.file) || (500 != ntohs(tmp.port)) || (INADDR_ANY != ntohl(tmp.addr.s_addr)))
-		printf("error: case3\n");
+	CHECK_EQUAL(args_parse(data + 4, 2, &tmp), 0)
+	CHECK_EQUAL(tmp.file, NULL)
+	CHECK_EQUAL(ntohs(tmp.port), 500)
+	CHECK_EQUAL(ntohl(tmp.addr.s_addr), INADDR_ANY)
 
-	if(1 != get_id())
-		printf("error: case4\n");
-	if(2 != get_id())
-		printf("error: case5\n");
-	printf("finish\n");
+	CHECK_EQUAL(get_id(), 1)
+	CHECK_EQUAL(get_id(), 2)
+	printf("finished Init test\n");
         return 0;
 }
 
