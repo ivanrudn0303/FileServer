@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <sys/socket.h>
 
+#define CONN_LIMIT 17
+
 typedef struct
 {
 	const char* file;
@@ -15,6 +17,7 @@ typedef struct
 } arguments;
 
 int args_parse(const char* argv[], int argc, arguments* res);
+int create_sock_server(arguments* args);
 uint32_t get_id();
 
 #endif

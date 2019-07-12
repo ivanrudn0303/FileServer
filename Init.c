@@ -1,6 +1,7 @@
 #include "Init.h"
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 uint32_t get_id()
 {
@@ -43,4 +44,35 @@ int args_parse(const char* argv[], const int argc, arguments* res)
 		}
 	}
 	return 0;
+}
+
+int create_sock_server(arguments* args) {
+	int sock_server = -1;
+	uint16_t port = args->port;
+	struct sockaddr_in addr;
+
+	sock_server = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock_server < 0)
+	{
+		perror("socket() failed");
+		exit(-1);
+	}
+
+	addr.sin_family = AF_INET;
+	addr.sin_addr = args->addr;
+	addr.sin_port = args->port;
+
+	if ((bind(sock_server, (struct sockaddr *)&addr, sizeof(addr))) < 0)
+	{
+		perror("bind() failed");
+		close(sock_server);
+		exit(-1);
+	}
+
+	if ((listen(sock_server, CONN_LIMIT)) != 0) {
+		perror("Listen failed...\n");
+		exit(-1);
+	}
+
+	return sock_server;
 }
