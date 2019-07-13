@@ -1,40 +1,56 @@
 #include "Init.h"
 #include "server_funcs.h"
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+
+#define MAX_BUF_SIZE 50000
 
 
 int main (int argc, char const *argv[]) {
-	struct sockaddr_in servaddr, cliaddr;
-	int sock_fd, conn_fd;
-	storage_elem** storage = (storage_elem**)malloc(sizeof(storage_elem*) * CONN_LIMIT);
-	int i = 0;
+	struct sockaddr_in servaddr, cliaddr; 
+	int sock_fd, conn_fd, num_last_packet_recv = 0;
+	char* buf = (char*)malloc(sizeof(char) * MAX_BUF_SIZE);
+	FILE* file;
 
-	for (i = 0; i < CONN_LIMIT; i++) {
-		storage[i] = (storage_elem*)malloc(sizeof(storage_elem));
-		memset(storage[i], 0, sizeof(storage_elem));
+	arguments* args = (arguments*)calloc(0, sizeof(arguments));
+	if (args_parse(argv, argc, args)) {
+		printf("Invalid command line arguments.\n");
+		return -1;
 	}
-
-	arguments* args = (arguments*)malloc(sizeof(arguments));
-
-	args_parse(argv, argc, args);
-
 	sock_fd = create_sock_server(args);
 
 	int len = sizeof(cliaddr);
 	int id = 0;
-	int conn_count = 0;
+	bool is_new_download = false;
+	bool is_server_available = true;
+	int curr_client_id = -1;
 
-	while ((conn_fd = accept(sock_fd, (struct sockaddr_in *) &cliaddr, &len) > 0)) {
-		if (id = client_authorization(conn_fd)) {
-			resume_download(conn_fd, id, storage);
-		} else {
-			id = ++conn_count;
-			start_download(conn_fd, id, storage);
+
+	while ((conn_fd = accept(sock_fd, (struct sockaddr *) &cliaddr, (socklen_t *) &len) > 0)) {
+		printf("Connecton established.\n");
+		id = client_authorization(conn_fd);
+
+		if (!id) {
+			id = get_id();
+			give_client_id(id);
+			is_new_download = true;
+		} else if (id == curr_client_id)
+			is_new_download = false;
+		else
+			is_server_available = false;
+
+		if (is_new_download)
+			file = get_new_file();
+
+		if (is_server_available) {
+			int n = num_last_packet_recv;
+			download(conn_fd, buf, &num_last_packet_recv);
+			write_to_file(buf, file, n);
+			memset(buf, 0, sizeof(char) * MAX_BUF_SIZE);
 		}
+
+		is_server_available = true;
 	}
 	free(args);
+	free(buf);
 	close(sock_fd);
 	return 0;
 }

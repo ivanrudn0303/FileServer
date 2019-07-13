@@ -28,7 +28,17 @@ server.o: ${BASE}/server.c
 server_funcs.o: ${BASE}/server_funcs.c
 	${CC} -I${INC}/ -c ${BASE}/server_funcs.c
 
-server: Init.o server.o server_funcs.o
-	${CC} -o out_server Init.o server.o server_funcs.o
+server: Init.o server.o server_funcs.o Talk.o
+	${CC} -o out_server Init.o server.o server_funcs.o Talk.o
+
+client.o: ${BASE}/client.c
+	${CC} -I${INC}/ -c ${BASE}/client.c
+
+client_funcs.o: ${BASE}/client_funcs.c
+	${CC} -I${INC}/ -c ${BASE}/client_funcs.c
+
+client: Init.o client.o client_funcs.o Talk.o
+	${CC} -o out_client Init.o client.o client_funcs.o Talk.o
+
 clean:
 	-rm -rf out* *.o
