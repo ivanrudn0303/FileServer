@@ -1,6 +1,5 @@
 #include "client_funcs.h"
 #include "Init.h"
-#include "Talk.h"
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,7 +9,7 @@
 
 
 
-int main(char* argv[], int argc)
+int main(int argc, char* argv[])
 {
 	int file;
 	uint32_t id = 0;
@@ -55,7 +54,7 @@ int main(char* argv[], int argc)
 			close(file);
 			return 1;
 		}
-		if (start_session(&id, &pos))
+		if (start_session(sock_fd, &id, &pos))
 		{
 			printf("Server refused transmission\n");
 			close(sock_fd);
