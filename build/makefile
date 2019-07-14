@@ -13,8 +13,8 @@ test_init: Init.o uInit.o
 uInit.o: ${BASE}/test/uInit.c
 	${CC} -I${INC}/ -c ${BASE}/test/uInit.c
 
-test_talk: Talk.o Init.o uTalk.o
-	${CC} -o out_test_talk Talk.o Init.o uTalk.o
+test_talk: client_funcs.o server_funcs.o Talk.o uTalk.o
+	${CC} -o out_test_talk client_funcs.o server_funcs.o Talk.o uTalk.o
 
 Talk.o: ${BASE}/Talk.c
 	${CC} -I${INC}/ -c ${BASE}/Talk.c

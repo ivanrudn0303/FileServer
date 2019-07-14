@@ -1,5 +1,6 @@
+#include "client_funcs.h"
+#include "server_funcs.h"
 #include "Talk.h"
-#include "Init.h"
 #include "Macro.h"
 #include <arpa/inet.h>
 #include <string.h>
