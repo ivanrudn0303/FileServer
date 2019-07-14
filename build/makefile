@@ -2,7 +2,7 @@ CC = gcc
 BASE = ..
 INC = ${BASE}
 
-all: server test_init test_talk
+all: client server test_init test_talk
 
 
 Init.o: ${BASE}/Init.c
