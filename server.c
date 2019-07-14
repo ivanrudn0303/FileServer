@@ -30,8 +30,9 @@ int main (int argc, char const *argv[]) {
 
 		if (!id) {
 			id = get_id();
-			give_client_id(id);
+			give_client_id(id, conn_fd);
 			is_new_download = true;
+			curr_client_id = id;
 		} else if (id == curr_client_id)
 			is_new_download = false;
 		else

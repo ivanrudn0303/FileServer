@@ -14,6 +14,7 @@
 
 #define CONN_LIMIT 17
 #define SIZE_OF_DATA 1000
+#define MSG_TIMEOUT 100
 
 
 enum MESSAGE_TYPES
