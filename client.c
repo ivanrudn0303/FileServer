@@ -72,12 +72,17 @@ int main(int argc, char* argv[])
 		// main loop
 		for (; pos < info.st_size; pos += SIZE_OF_DATA)
 		{
-			if (transmission(file, sock_fd, (info.st_size - pos) % SIZE_OF_DATA + 1))
+			int len = SIZE_OF_DATA;
+			if (info.st_size - pos < SIZE_OF_DATA)
+				len = info.st_size - pos;
+			if (transmission(file, sock_fd, len))
 			{
 				trans_succ = false;
 				break;
 			}
 		}
+		if (!trans_succ)
+			printf("Transmission failed\n");
 		if (trans_succ && (0 == finnish(sock_fd)))
 			break;
 		close(sock_fd);

@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 
-#define TIMEOUT_CLIENT 1000*3600
+#define TIMEOUT_CLIENT 2000
 
 int create_sock_client()
 {
@@ -27,11 +27,11 @@ int transmission(int file, int sock_fd, unsigned int len)
 	int res = wrecv(5, sock_fd, &msg, sizeof(msg), 0);
 	if (res < 0)
 	{
-		printf("Error in recieving: errno = %d\n", errno);
+		printf("Error in recieving(transmission): errno = %d\n", errno);
 		return 1;
 	} else if ((res > 0) && (ERROR_MESSAGE == msg.type))
 	{
-		printf("error from server: %s\n", msg.data);
+		printf("Error from server(transmission): %s\n", msg.data);
 		return 2;
 	}
 	res = read(file, &msg.data, len);
@@ -49,7 +49,7 @@ int transmission(int file, int sock_fd, unsigned int len)
 		res = wsend(TIMEOUT_CLIENT, sock_fd, &msg, sizeof(msg), 0);
 		if (res < sizeof(msg))
 		{
-			printf("Error in sending: res = %d, errno = %d\n", res, errno);
+			printf("Error in sending(transmission): res = %d, errno = %d\n", res, errno);
 			return 2;
 		}
 	}
@@ -60,14 +60,14 @@ int finnish(int sock_fd)
 {
 	message msg;
 	int res = wrecv(TIMEOUT_CLIENT, sock_fd, &msg, sizeof(msg), 0);
-	if (res < 0)
+	if (res <= 0)
 	{
-		printf("Error in recieving: errno = %d\n", errno);
+		printf("Error in recieving(finnish): res = %d, errno = %d\n", res, errno);
 		return 1;
 	}
 	if (ERROR_MESSAGE == msg.type)
 	{
-		printf("error from server: %s\n", msg.data);
+		printf("Error from server(finnish): %s\n", msg.data);
 		return 2;
 	}
 	close(sock_fd);
@@ -84,13 +84,13 @@ int start_session(int sock_fd, uint32_t* id, unsigned int* len)
 	res = wsend(TIMEOUT_CLIENT, sock_fd, &msg, sizeof(msg), 0);
 	if (res < sizeof(msg))
 	{
-		printf("Error in sending: res = %d, errno = %d\n", res, errno);
+		printf("Error in sending(start_session): res = %d, errno = %d\n", res, errno);
 		return 2;
 	}
 	res = wrecv(TIMEOUT_CLIENT, sock_fd, &msg, sizeof(msg), 0);
-	if (res < 0)
+	if (res <= 0)
 	{
-		printf("Error in recieving: errno = %d\n", errno);
+		printf("Error in recieving(start_session): res = %d, errno = %d\n", res, errno);
 		return 1;
 	} else if ((AUTH_MESSAGE != msg.type) || (0 == ((unsigned int*)msg.data)[0]))
 	{
