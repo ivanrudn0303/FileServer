@@ -30,19 +30,19 @@ int main (int argc, char const *argv[]) {
 	//REDO: reject all other clients
 	//send them message with 0 id
 	while ((conn_fd = accept(sock_fd, (struct sockaddr *) &cliaddr, (socklen_t *) &len) > 0)) {
-		if (finish)
-			break;
 		printf("Connecton established.\n");
 		id = client_authorization(conn_fd, &file_len);
 
 		if (!id) {
 			id = get_id();
-			give_client_id(id, conn_fd);
+			give_client_id(id, conn_fd); // add num_last_packet_recv in param
 			curr_client_id = id;
 		} else if (id != curr_client_id) {
 			give_client_id(0, conn_fd); //send to client message with id 0
 			is_server_available = false;
-		} //id = -1 case: authorization failed
+		} else if (id == curr_client_id) {
+			give_client_id(id, conn_fd);
+		}
 
 		if (is_server_available) {
 			download(conn_fd, &num_last_packet_recv, file, &file_len);
@@ -50,6 +50,9 @@ int main (int argc, char const *argv[]) {
 
 		is_server_available = true;
 		close(conn_fd);
+		if (finish) {
+			break;
+		}
 	}
 	free(args);
 	free(buf);

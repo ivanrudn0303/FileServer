@@ -51,19 +51,21 @@ int client_authorization(int conn_fd, size_t* file_len) {
 
   if (msg->type != AUTH_MESSAGE) {
     error_handler(conn_fd, "SERVER: Authorization failed, disconnect client.\n");
-    close(conn_fd);
+    // close(conn_fd); //
     return -1; //DONE if msg type not auth disconnect
   }
 
   //DONE client sends message with id, new client send message with id equals 0
   id = *(int*)msg->data; //DONE *(int*)data -- id cast to int.  Add length of file (int*) data [1]
   *file_len = (int*)msg->data[1];
+  free(buf);
   return id;
 }
 
 
 void give_client_id(int id, int conn_fd) {
   message msg;
+  memset(&msg, sizeof(message), 0);
   msg.type = AUTH_MESSAGE;
   *(int*)msg.data = id; 
   int res = wsend(MSG_TIMEOUT, conn_fd, (const void*)&msg, sizeof(message), 0);
@@ -84,13 +86,6 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len) {
   bool is_download_in_progress = true;
   message msg;
   int i = 0;
-  int file_pos = *num_last_packet_recv * SIZE_OF_DATA;
-
-  if (lseek(file, file_pos, SEEK_SET) != file_pos) {
-      error_handler(conn_fd, "SERVER: Cannot set position in file.\n");
-      close(file);
-      return -1;
-  }
 
   while (is_download_in_progress) {
     int res = wrecv(MSG_TIMEOUT, conn_fd, (const void*)&msg, sizeof(message), 0);
@@ -109,13 +104,15 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len) {
 
         if (len / SIZE_OF_DATA) {
           write(file, msg.data, SIZE_OF_DATA);
+          // check write ret -1
+          // check write ret 0
+
           len -= SIZE_OF_DATA;
         } else {
           write(file, msg.data, len);
-          if (!len) {
-            error_handler(conn_fd, "SERVER: Error while writing file to disk.\n");
-            return -1;
-          }
+          // check write ret -1
+          // check write ret 0
+
           is_download_in_progress = false;
         }
 
@@ -124,7 +121,10 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len) {
 
       case ERROR_MESSAGE:
         printf("Error ocurred on client while sending data message.\n");
+        // msg.data error
 
+
+        //return
         break;
     } //DONE add write to file here, by chuncks
   }
