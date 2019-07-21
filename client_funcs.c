@@ -6,6 +6,7 @@
 
 
 #define TIMEOUT_CLIENT 2000
+#define TIMEOF_WAIT_ERROR 5
 
 int create_sock_client()
 {
@@ -24,7 +25,7 @@ int create_sock_client()
 int transmission(int file, int sock_fd, unsigned int len)
 {
 	message msg;
-	int res = wrecv(5, sock_fd, &msg, sizeof(msg), 0);
+	int res = wrecv(TIMEOF_WAIT_ERROR, sock_fd, &msg, sizeof(msg), 0);
 	if (res < 0)
 	{
 		printf("Error in recieving(transmission): errno = %d\n", errno);
@@ -79,8 +80,8 @@ int start_session(int sock_fd, uint32_t* id, unsigned int* len)
 	int res;
 	message msg;
 	msg.type = AUTH_MESSAGE;
-	((unsigned int*)msg.data)[0] = *id;
-	((unsigned int*)msg.data)[1] = *len;
+	((uint32_t*)msg.data)[0] = *id;
+	((uint32_t*)msg.data)[1] = *len;
 	res = wsend(TIMEOUT_CLIENT, sock_fd, &msg, sizeof(msg), 0);
 	if (res < sizeof(msg))
 	{
@@ -92,12 +93,12 @@ int start_session(int sock_fd, uint32_t* id, unsigned int* len)
 	{
 		printf("Error in recieving(start_session): res = %d, errno = %d\n", res, errno);
 		return 1;
-	} else if ((AUTH_MESSAGE != msg.type) || (0 == ((unsigned int*)msg.data)[0]))
+	} else if ((AUTH_MESSAGE != msg.type) || (0 == ((uint32_t*)msg.data)[0]))
 	{
 		printf("Error in auth: msg.type == %d\n", msg.type);
 		return 3;
 	}
-	*id = ((unsigned int*)msg.data)[0];
-	*len = ((unsigned int*)msg.data)[1];
+	*id = ((uint32_t*)msg.data)[0];
+	*len = ((uint32_t*)msg.data)[1];
 	return 0;
 }
