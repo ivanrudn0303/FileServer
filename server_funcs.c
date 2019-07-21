@@ -33,10 +33,9 @@ int create_sock_server(arguments* args) {
 
 
 int client_authorization(int conn_fd, size_t* file_len) {
-  const void* buf = (const void*)malloc(sizeof(message));
-  message* msg = NULL;
+  message  msg;
   int id;
-  int res = wrecv(MSG_TIMEOUT, conn_fd, buf, sizeof(message), 0);
+  int res = wrecv(MSG_TIMEOUT, conn_fd, &msg, sizeof(message), 0);
 
   if (!res) {
     error_handler(conn_fd, "SERVER: Error while receiving auth message...\n");
@@ -47,25 +46,28 @@ int client_authorization(int conn_fd, size_t* file_len) {
     return -1;
   }
 
-  msg = (message*)buf;
-
-  if (msg->type != AUTH_MESSAGE) {
+  if (msg.type != AUTH_MESSAGE) {
     error_handler(conn_fd, "SERVER: Authorization failed, disconnect client.\n");
     // close(conn_fd); //
     return -1; //DONE if msg type not auth disconnect
   }
 
   //DONE client sends message with id, new client send message with id equals 0
-  id = *(int*)msg->data; //DONE *(int*)data -- id cast to int.  Add length of file (int*) data [1]
-  *file_len = (int*)msg->data[1];
-  free(buf);
+  id = *(int*)msg.data; //DONE *(int*)data -- id cast to int.  Add length of file (int*) data [1]
+  *file_len = ((int*)msg.data)[1];
+  if (*file_len == 0) {
+    printf("File lenght equals 0. Disconnect client...");
+    return -1;
+
+  }
+  printf("Authorization is completed. Client id: %d, file length: %zu\n", id, *file_len);
   return id;
 }
 
 
 void give_client_id(int id, int conn_fd) {
   message msg;
-  memset(&msg, sizeof(message), 0);
+  memset(&msg, 0, sizeof(message));
   msg.type = AUTH_MESSAGE;
   *(int*)msg.data = id; 
   int res = wsend(MSG_TIMEOUT, conn_fd, (const void*)&msg, sizeof(message), 0);
@@ -77,12 +79,15 @@ void give_client_id(int id, int conn_fd) {
     error_handler(conn_fd, "SERVER: Error while sending id message.\n");
     // process errno
     return;
-  } // WONT DO: position to download from start in bytes, new client starts from the beginning 
+  } // WONT DO: position to download from start in bytes, new client starts from the beginning
+
+  printf("Id message was sent to client. The id given: %d\n", id); 
 }
 
 
-int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len) {
+int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bool* finish) {
   int len = *file_len;
+  printf("File length: %d\n", *file_len);
   bool is_download_in_progress = true;
   message msg;
   int i = 0;
@@ -99,10 +104,13 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len) {
       // process errno
     }
 
+    printf("Message type: %d\n", msg.type);
+
     switch (msg.type) {
       case DATA_MESSAGE:
-
+        printf("Current length: %d\n", len);
         if (len / SIZE_OF_DATA) {
+          printf("Writing to file packge #%d...\n", *num_last_packet_recv);
           write(file, msg.data, SIZE_OF_DATA);
           // check write ret -1
           // check write ret 0
@@ -112,7 +120,7 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len) {
           write(file, msg.data, len);
           // check write ret -1
           // check write ret 0
-
+          *finish = true;
           is_download_in_progress = false;
         }
 
@@ -125,8 +133,17 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len) {
 
 
         //return
-        break;
+        return -1;
+
+      default:
+        printf("Error. AUTH_MESSAGE type while data is expected.\n");
+
+        //return
+
+        return -1;
+
     } //DONE add write to file here, by chuncks
   }
+  return *file_len;
   
 }
