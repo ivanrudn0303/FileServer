@@ -6,7 +6,7 @@
 #include <errno.h>
 
 
-uint32_t get_id()
+uint32_t get_id(void)
 {
 	static uint32_t id = 0;
 	return ++id;
@@ -49,20 +49,4 @@ int args_parse(const char* argv[], const int argc, arguments* res)
 	return 0;
 }
 
-
-int error_handler(int conn_fd, char* error_string) {
-	printf("%s\n", error_string);
-	message msg;
-	msg.type = ERROR_MESSAGE;
-	strcpy(msg.data, error_string);
-	int res = wsend(100, conn_fd, (const void*)&msg, sizeof(message), 0);
-	if (!res) {
-    	printf("ERROR_MSG_ERROR: Error occurred while sending error message...\n");
-    	return -1;
-  	} else if (res == -1) {
-    	printf("ERROR_MSG_ERROR: Sending was interrupted, error code %d.\n", errno);
-    	return -1;
-  	}
-  	return 0;
-}
 

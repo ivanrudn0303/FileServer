@@ -56,7 +56,7 @@ int transmission(int file, int sock_fd, unsigned int len)
 	return 0;
 }
 
-int finnish(int sock_fd)
+int finish(int sock_fd)
 {
 	message msg;
 	int res = wrecv(TIMEOUT_CLIENT, sock_fd, &msg, sizeof(msg), 0);

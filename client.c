@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
 		}
 		if (!trans_succ)
 			printf("Transmission failed\n");
-		if (trans_succ && (0 == finnish(sock_fd)))
+		if (trans_succ && (0 == finish(sock_fd)))
 			break;
 		close(sock_fd);
 	}
