@@ -41,7 +41,6 @@ typedef struct
 
 
 int args_parse(const char* argv[], int argc, arguments* res);
-uint32_t get_id();
-int error_handler(int conn_fd, char* error_string);
+uint32_t get_id(void);
 
 #endif

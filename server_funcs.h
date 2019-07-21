@@ -1,5 +1,5 @@
-#ifndef SERVER_FUNCS
-#define SERVER_FUNCS
+#ifndef SERVER_FUNCS_H
+#define SERVER_FUNCS_H
 
 #include "Talk.h"
 #include <errno.h>
