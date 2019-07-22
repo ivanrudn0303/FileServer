@@ -14,14 +14,16 @@
 
 
 #define CONN_LIMIT 17
-#define SIZE_OF_DATA 1000
+#define SIZE_OF_DATA 1024*1024
+#define SIZE_OF_AUTH 2*4
 
 
 enum MESSAGE_TYPES
 {
 	AUTH_MESSAGE,
 	ERROR_MESSAGE,
-	DATA_MESSAGE
+	DATA_MESSAGE,
+	FINISH_MESSAGE
 };
 
 
@@ -33,11 +35,12 @@ typedef struct
 } arguments;
 
 
-typedef struct 
+struct message
 {
-	enum MESSAGE_TYPES type;
-	char data [SIZE_OF_DATA];
-} message;
+	uint32_t type;
+	uint32_t size;
+} __attribute__((packed));
+typedef struct message message;
 
 
 int args_parse(const char* argv[], int argc, arguments* res);
