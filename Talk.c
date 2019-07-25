@@ -68,16 +68,20 @@ ssize_t wrecv(int timeout, int sockfd, const void *buf, size_t len, int flags)
 
 int error_handler(int conn_fd, char* error_string) {
         printf("%s\n", error_string);
-        message msg;
-        msg.type = ERROR_MESSAGE;
-        strcpy(msg.data, error_string);
-        int res = wsend(100, conn_fd, (const void*)&msg, sizeof(message), 0);
+        int err_str_len = strlen(error_string);
+        char buf [sizeof(message) + err_str_len];
+        ((uint32_t*)buf)[0] = ERROR_MESSAGE;
+        ((uint32_t*)buf)[1] = err_str_len;
+        memcpy(error_string, buf + sizeof(uint32_t) * 2, err_str_len);  
+        int res = wsend(100, conn_fd, buf, sizeof(message) + err_str_len, 0);
+
         if (!res) {
-        printf("ERROR_MSG_ERROR: Error occurred while sending error message...\n");
-        return -1;
+                printf("ERROR_MSG_ERROR: Error occurred while sending error message...\n");
+                return -1;
         } else if (res == -1) {
-        printf("ERROR_MSG_ERROR: Sending was interrupted, error code %d.\n", errno);
-        return -1;
+                printf("ERROR_MSG_ERROR: Sending was interrupted, error code %d.\n", errno);
+                return -1;
         }
+
         return 0;
 }

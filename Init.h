@@ -16,6 +16,7 @@
 #define CONN_LIMIT 17
 #define SIZE_OF_DATA 1024*1024
 #define SIZE_OF_AUTH 2*4
+#define SIZE_TO_WRITE 4 * 1024
 
 
 enum MESSAGE_TYPES

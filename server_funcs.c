@@ -1,6 +1,8 @@
 #include "Init.h"
 #include "server_funcs.h"
 
+int process_connection_errors(int conn_fd, int res, char* error_str, char* func_name, int msg_size);
+
 
 int create_sock_server(arguments* args) {
   int sock_server = -1;
@@ -9,7 +11,7 @@ int create_sock_server(arguments* args) {
 
   sock_server = socket(AF_INET, SOCK_STREAM, 0);
   if (sock_server < 0) {
-    perror("socket() failed\n");
+    printf("socket() failed\n");
     return -1;
   }
 
@@ -18,13 +20,13 @@ int create_sock_server(arguments* args) {
   addr.sin_port = args->port;
 
   if ((bind(sock_server, (struct sockaddr *)&addr, sizeof(addr))) < 0) {
-    perror("bind() failed\n");
+    printf("bind() failed\n");
     close(sock_server);
     return -1;
   }
 
   if ((listen(sock_server, CONN_LIMIT)) != 0) { 
-    perror("Listen failed...\n"); 
+    printf("Listen failed...\n"); 
     return -1; 
   } 
 
@@ -35,95 +37,130 @@ int create_sock_server(arguments* args) {
 int client_authorization(int conn_fd, size_t* file_len) {
   message  msg;
   int id;
+  char error_str[1024];
+  char func_name [] = "SERVER (client_authorization) error:";
+  int error_code;
   int res = wrecv(MSG_TIMEOUT, conn_fd, &msg, sizeof(message), 0);
 
-  if (!res) {
-    error_handler(conn_fd, "SERVER: Error while receiving auth message...\n");
-    return -1;
-  } else if (res == -1) {
-    error_handler(conn_fd, "SERVER: Error while receiving auth message.\n");
-    // process errno, think about way to make an informative desc
-    return -1;
+  if(!(error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof(message)))) {
+    return error_code;
   }
 
   if (msg.type != AUTH_MESSAGE) {
-    error_handler(conn_fd, "SERVER: Authorization failed, disconnect client.\n");
-    // close(conn_fd); //
-    return -1; //DONE if msg type not auth disconnect
+    sprintf(error_str, "%s authorization protocol is broken, disconnect client.\n", func_name);
+    error_handler(conn_fd, error_str);
+    return ERROR_AUTH; 
   }
 
   //DONE client sends message with id, new client send message with id equals 0
-  id = *(int*)msg.data; //DONE *(int*)data -- id cast to int.  Add length of file (int*) data [1]
-  *file_len = ((int*)msg.data)[1];
+  char buf[msg.size];
+  res = wrecv(MSG_TIMEOUT, conn_fd, buf, msg.size, 0);
+
+  if(!(error_code = process_connection_errors(conn_fd, res, error_str, func_name, msg.size))) {
+    return error_code;
+  }
+  
+  id = ((uint32_t*)buf)[0];
+  *file_len = ((uint32_t*)buf)[1];
+
   if (*file_len == 0) {
-    printf("File lenght equals 0. Disconnect client...");
-    return -1;
+    sprintf(error_str, "%s file length equals 0, disconnect client.\n", func_name);
+    error_handler(conn_fd, error_str);
+    return ERROR_AUTH;
 
   }
+
   printf("Authorization is completed. Client id: %d, file length: %zu\n", id, *file_len);
   return id;
 }
 
+int process_connection_errors(int conn_fd, int res, char* error_str, char* func_name, int msg_size) {
 
-void give_client_id(int id, int conn_fd) {
-  message msg;
-  memset(&msg, 0, sizeof(message));
-  msg.type = AUTH_MESSAGE;
-  *(int*)msg.data = id; 
-  int res = wsend(MSG_TIMEOUT, conn_fd, (const void*)&msg, sizeof(message), 0);
-
-  if (!res) {
-    error_handler(conn_fd, "SERVER: Error while sending id message...\n");
-    return;
+  if ((res >= 0) && (res < msg_size)) {
+    sprintf(error_str, "%s download speed is low, reconnect.\n", func_name);
+    error_handler(conn_fd, error_str);
+    return ERROR_SLOW;
   } else if (res == -1) {
-    error_handler(conn_fd, "SERVER: Error while sending id message.\n");
-    // process errno
-    return;
-  } // WONT DO: position to download from start in bytes, new client starts from the beginning
+    sprintf(error_str, "%s %s\n", func_name, strerror(errno));
+    error_handler(conn_fd, error_str);
+    return ERROR_CONN;
+  }
+
+  return 0;
+}
+
+int give_client_id(int id, int conn_fd) {
+  int buf_size = sizeof(message) + sizeof(uint32_t);
+  char buf[buf_size];
+  int error_code;
+  char error_str[1024];
+  char func_name [] = "SERVER (give_client_id) error:";
+  ((uint32_t*)buf)[0] = AUTH_MESSAGE;
+  ((uint32_t*)buf)[1] = sizeof(uint32_t);
+  ((uint32_t*)buf)[2] = id;
+  int res = wsend(MSG_TIMEOUT, conn_fd, buf, sizeof(message), 0);
+
+  if(!(error_code = process_connection_errors(conn_fd, res, error_str, func_name, buf_size))) {
+    return error_code;
+  }
 
   printf("Id message was sent to client. The id given: %d\n", id); 
+  return 0;
 }
 
 
 int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bool* finish) {
+  char write_buf[SIZE_TO_WRITE];
+  char download_buf[SIZE_OF_DATA];
+  int error_code;
+  char error_str[1024];
+  char func_name [] = "SERVER (download) error:";
+  int res;
   int len = *file_len;
-  printf("File length: %d\n", *file_len);
   bool is_download_in_progress = true;
   message msg;
-  int i = 0;
+  int sizeof_buf = SIZE_OF_DATA;
+  int chunk = 0;
+  printf("File length: %d\n", *file_len);
 
   while (is_download_in_progress) {
-    int res = wrecv(MSG_TIMEOUT, conn_fd, (const void*)&msg, sizeof(message), 0);
+    res = wrecv(MSG_TIMEOUT, conn_fd, &msg, sizeof(message), 0);
 
-    if (!res) {
-      error_handler(conn_fd, "SERVER: Download speed is low, disconnect client.\n");
-      close(conn_fd);
-      return -1;
-    } else if (res == -1) {
-      error_handler(conn_fd, "SERVER: Error while receiving data message...\n"); 
-      // process errno
+    if(!(error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof(message)))) {
+      return error_code;
     }
 
     printf("Message type: %d\n", msg.type);
 
     switch (msg.type) {
       case DATA_MESSAGE:
-        printf("Current length: %d\n", len);
-        if (len / SIZE_OF_DATA) {
-          printf("Writing to file packge #%d...\n", *num_last_packet_recv);
-          write(file, msg.data, SIZE_OF_DATA);
-          // check write ret -1
-          // check write ret 0
-
-          len -= SIZE_OF_DATA;
-        } else {
-          write(file, msg.data, len);
-          // check write ret -1
-          // check write ret 0
+        printf("Current file length: %d\n", len);
+        
+        if (!(len / SIZE_OF_DATA)) {
+          sizeof_buf = len;
           *finish = true;
           is_download_in_progress = false;
         }
 
+        printf("Start download...\n");
+        res = wrecv(MSG_TIMEOUT, conn_fd, &download_buf, sizeof_buf, 0);
+
+        if(!(error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof_buf))) {
+          return error_code;
+        }
+
+        printf("Writing to file packge #%d...\n", *num_last_packet_recv);
+
+        for (; chunk < sizeof_buf; chunk += SIZE_TO_WRITE) {
+          res = write(file, download_buf + chunk, SIZE_TO_WRITE);
+
+          
+        }
+        chunk = 0;
+          // check write ret -1
+          // check write ret 0
+
+        len -= SIZE_OF_DATA;
         *num_last_packet_recv += 1;
         break;
 
@@ -146,4 +183,17 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bo
   }
   return *file_len;
   
+}
+
+int process_write_errors(int conn_fd, int res, char* error_str, char* func_name, int size) {
+
+  if ((res >= 0) && (res < size)) {
+    printf("Some data was missed during writing to file.\n");
+    return -1;
+  } else if (res == -1) {
+    printf("%s\n", strerror(errno));
+    return -1;
+  }
+
+  return 0;
 }

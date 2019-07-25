@@ -10,16 +10,21 @@ int main (int argc, char const *argv[]) {
 	int file;
 	size_t file_len = 0;
 	int download_res = -1;
-
 	arguments* args = (arguments*)calloc(0, sizeof(arguments));
+
 	if (args_parse(argv, argc, args)) {
 		printf("Invalid command line arguments.\n");
 		free(args);
 		free(buf);
-		exit(-1);
+		return -1;
 	}
-	sock_fd = create_sock_server(args);
 
+	if ((sock_fd = create_sock_server(args)) == -1) {
+		printf("Creation of socket failed.\n");
+		free(args);
+		free(buf);
+		return -1;
+	}
 
 	int len = sizeof(cliaddr);
 	int id = 0;
@@ -30,7 +35,18 @@ int main (int argc, char const *argv[]) {
 
 	//REDO: reject all other clients
 	//send them message with 0 id
-	while ((conn_fd = accept(sock_fd, (struct sockaddr *) &cliaddr, (socklen_t *) &len)) > 0) { 
+	do { 
+		conn_fd = accept(sock_fd, (struct sockaddr *) &cliaddr, (socklen_t *) &len);
+
+		if (conn_fd == -1) {
+			printf("accept() failed, error: %s\n", strerror(errno));
+			close(file);
+			close(sock_fd);
+			free(buf);
+			free(args);
+			return -1;
+		}
+
 		printf("Connecton established.\n");
 		id = client_authorization(conn_fd, &file_len);
 
@@ -58,7 +74,7 @@ int main (int argc, char const *argv[]) {
 		if (finish) {
 			break;
 		}
-	}
+	} while (conn_fd > 0);
 	free(args);
 	free(buf);
 	close(sock_fd);
