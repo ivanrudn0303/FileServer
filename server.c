@@ -50,9 +50,9 @@ int main (int argc, char const *argv[]) {
 		printf("Connecton established.\n");
 		id = client_authorization(conn_fd, &file_len);
 
-		if (!id) {
+		if (!id && -1 == curr_client_id) {
 			id = get_id();
-			if (give_client_id(id, conn_fd)) {
+			if (give_client_id(id, 0, conn_fd)) {
 				close(file);
 				close(sock_fd);
 				free(buf);
@@ -64,7 +64,7 @@ int main (int argc, char const *argv[]) {
 			printf("curr id: %d\n", curr_client_id);
 		} else if (id != curr_client_id) {
 
-			if (give_client_id(0, conn_fd)) {
+			if (give_client_id(0, 0, conn_fd)) {
 				close(file);
 				close(sock_fd);
 				free(buf);
@@ -74,7 +74,8 @@ int main (int argc, char const *argv[]) {
 
 			is_server_available = false;
 		} else if (id == curr_client_id) {
-			give_client_id(id, conn_fd);
+			printf("start from %d\n", num_last_packet_recv * SIZE_OF_DATA);
+			give_client_id(id, num_last_packet_recv * SIZE_OF_DATA, conn_fd);
 		}
 
 		printf("SERVER: current id: %d, id: %d\n", curr_client_id, id);
