@@ -8,12 +8,16 @@
 
 #define MSG_TIMEOUT 2000
 
-#define ERROR_RECV 1 // could not receive msg when wrecv returned -1, put errno to desc
-#define ERROR_SEND 2 // could not receive msg when wsend returned -1, put errno to desc
-#define ERROR_AUTH 3 // authorization of client failed, use error_handler
-#define ERROR_SOCK 4 // cmd arguments are incorrect
+#define ERROR_RECV 1 
+#define ERROR_SEND 2 
+#define ERROR_AUTH 3 
+#define ERROR_SOCK 4 
 #define ERROR_SLOW 5
 #define ERROR_CONN 6
+#define ERROR_WR_MISS 7
+#define ERROR_WR 8
+#define ERROR_CLIENT 9
+#define ERROR_MSG_TYPE 10
 
 
 
