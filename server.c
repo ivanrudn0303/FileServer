@@ -31,7 +31,7 @@ int main (int argc, char const *argv[]) {
 	bool is_server_available = true;
 	bool finish = false;
 	int curr_client_id = -1;
-	file = open(args->file, O_CREAT | O_WRONLY | O_RDONLY);
+	file = open(args->file, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
 
 	//REDO: reject all other clients
 	//send them message with 0 id
@@ -52,9 +52,7 @@ int main (int argc, char const *argv[]) {
 
 		if (!id) {
 			id = get_id();
-			printf("id: %d\n", id);
 			if (give_client_id(id, conn_fd)) {
-				printf("KEK\n");
 				close(file);
 				close(sock_fd);
 				free(buf);

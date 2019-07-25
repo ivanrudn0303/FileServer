@@ -80,7 +80,7 @@ int client_authorization(int conn_fd, size_t* file_len) {
 int process_connection_errors(int conn_fd, int res, char* error_str, char* func_name, int msg_size) {
 
   if ((res >= 0) && (res < msg_size)) {
-    sprintf(error_str, "%s download speed is low, reconnect.\n", func_name);
+    sprintf(error_str, "%s download speed is low, reconnect. res: %d\n", func_name, res);
     error_handler(conn_fd, error_str);
     return ERROR_SLOW;
   } else if (res == -1) {
@@ -94,18 +94,18 @@ int process_connection_errors(int conn_fd, int res, char* error_str, char* func_
 
 int give_client_id(int id, int conn_fd) {
   int buf_size = sizeof(message) + sizeof(uint32_t) * 2;
-  char buf[buf_size];
+  char buf[sizeof(message) + sizeof(uint32_t) * 2];
   int error_code;
+  int res;
   char error_str[1024];
   char func_name [] = "SERVER (give_client_id) error:";
   ((uint32_t*)buf)[0] = AUTH_MESSAGE;
-  ((uint32_t*)buf)[1] = sizeof(uint32_t);
+  ((uint32_t*)buf)[1] = sizeof(uint32_t) * 2;
   ((uint32_t*)buf)[2] = id;
   ((uint32_t*)buf)[3] = 0;
-  int res = wsend(MSG_TIMEOUT, conn_fd, &buf, sizeof(buf), 0);
+  res = wsend(MSG_TIMEOUT, conn_fd, &buf, sizeof(buf), 0);
 
   if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, buf_size))) {
-    printf("JO{a\n");
     return error_code;
   }
 
@@ -139,12 +139,20 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bo
 
     switch (msg.type) {
       case DATA_MESSAGE:
-        printf("Current file length: %d\n", len);
+        sizeof_buf = msg.size;
         
-        if (!(len / SIZE_OF_DATA)) {
-          sizeof_buf = len;
+        if (sizeof_buf < SIZE_OF_DATA) {
+          printf("Size of buf: %d", sizeof_buf);
           *finish = true;
           is_download_in_progress = false;
+          msg.type = FINISH_MESSAGE;
+          msg.size = 0;
+          res = wsend(MSG_TIMEOUT, conn_fd, &msg, sizeof(message), 0);
+
+          if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof(message)))) {
+            return error_code;
+          }
+
         }
 
         printf("Start download...\n");

@@ -29,6 +29,8 @@ ssize_t wsend(int timeout, int sockfd, const void *buf, size_t len, int flags)
 			return -1;
 		else
 			size += ret;
+                if (len == size)
+                        return size;
 		gettimeofday(&tv, NULL);
 		mcurr = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 	}
@@ -60,6 +62,8 @@ ssize_t wrecv(int timeout, int sockfd, const void *buf, size_t len, int flags)
                         return -1;
                 else
                         size += ret;
+                if (len == size)
+                        return size;
                 gettimeofday(&tv, NULL);
                 mcurr = tv.tv_sec * 1000 + tv.tv_usec / 1000;
         }
@@ -69,10 +73,10 @@ ssize_t wrecv(int timeout, int sockfd, const void *buf, size_t len, int flags)
 int error_handler(int conn_fd, char* error_string) {
         printf("%s\n", error_string);
         int err_str_len = strlen(error_string);
-        char buf [sizeof(message) + err_str_len];
+        char buf [1024];
         ((uint32_t*)buf)[0] = ERROR_MESSAGE;
         ((uint32_t*)buf)[1] = err_str_len;
-        memcpy(error_string, buf + sizeof(uint32_t) * 2, err_str_len);  
+        memcpy(buf + sizeof(uint32_t) * 2, error_string, err_str_len);  
         int res = wsend(100, conn_fd, buf, sizeof(message) + err_str_len, 0);
 
         if (!res) {
