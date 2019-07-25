@@ -36,9 +36,8 @@ int create_sock_server(arguments* args) {
 }
 
 
-int client_authorization(int conn_fd, size_t* file_len) {
+int client_authorization(int conn_fd, uint32_t* id, size_t* file_len) {
   message  msg;
-  int id;
   char error_str[1024];
   char func_name [] = "SERVER (client_authorization) error:";
   int error_code;
@@ -49,7 +48,7 @@ int client_authorization(int conn_fd, size_t* file_len) {
   }
 
   if (msg.type != AUTH_MESSAGE) {
-    sprintf(error_str, "%s authorization protocol is broken, disconnect client.\n", func_name);
+    sprintf(error_str, "%s authorization protocol is broken, disconnect client. Type of message received: %d.\n", func_name, msg.type);
     error_handler(conn_fd, error_str);
     return ERROR_AUTH; 
   }
@@ -62,7 +61,7 @@ int client_authorization(int conn_fd, size_t* file_len) {
     return error_code;
   }
   
-  id = ((uint32_t*)buf)[0];
+  *id = ((uint32_t*)buf)[0];
   *file_len = ((uint32_t*)buf)[1];
 
   if (*file_len == 0) {
@@ -75,7 +74,7 @@ int client_authorization(int conn_fd, size_t* file_len) {
 
   printf("Authorization is completed. Client id: %d, file length: %zu\n", id, *file_len);
   free(buf);
-  return id;
+  return 0;
 }
 
 
@@ -131,14 +130,6 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bo
         if (sizeof_buf < SIZE_OF_DATA) {
           *finish = true;
           is_download_in_progress = false;
-          msg.type = FINISH_MESSAGE;
-          msg.size = 0;
-          res = wsend(MSG_TIMEOUT, conn_fd, &msg, sizeof(message), 0);
-
-          if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof(message)))) {
-            return error_code;
-          }
-
         }
 
         printf("Start download...\n");
@@ -173,6 +164,16 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bo
           error_handler(conn_fd, error_str);
         }
 
+        if (*finish) {
+          msg.type = FINISH_MESSAGE;
+          msg.size = 0;
+          res = wsend(MSG_TIMEOUT, conn_fd, &msg, sizeof(message), 0);
+
+          if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof(message)))) {
+            return error_code;
+          }
+        }
+
         chunk = 0;
         *num_last_packet_recv += 1;
         break;
@@ -202,7 +203,7 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bo
 
     }
   }
-  return *file_len;
+  return 0;
   
 }
 

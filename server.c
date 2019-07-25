@@ -1,12 +1,9 @@
 #include "server_funcs.h"
 
-#define MAX_BUF_SIZE 50000
-
 
 int main (int argc, char const *argv[]) {
 	struct sockaddr_in servaddr, cliaddr; 
 	int sock_fd, conn_fd, num_last_packet_recv = 0;
-	char* buf = (char*)malloc(sizeof(char) * MAX_BUF_SIZE);
 	int file;
 	size_t file_len = 0;
 	int download_res = -1;
@@ -15,22 +12,22 @@ int main (int argc, char const *argv[]) {
 	if (args_parse(argv, argc, args)) {
 		printf("Invalid command line arguments.\n");
 		free(args);
-		free(buf);
 		return -1;
 	}
 
 	if ((sock_fd = create_sock_server(args)) == -1) {
 		printf("Creation of socket failed.\n");
 		free(args);
-		free(buf);
 		return -1;
 	}
 
+	free(args);
 	int len = sizeof(cliaddr);
 	int id = 0;
 	bool is_server_available = true;
 	bool finish = false;
 	int curr_client_id = -1;
+	int error_code = 0;
 	file = open(args->file, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
 
 	//REDO: reject all other clients
@@ -42,57 +39,62 @@ int main (int argc, char const *argv[]) {
 			printf("accept() failed, error: %s\n", strerror(errno));
 			close(file);
 			close(sock_fd);
-			free(buf);
-			free(args);
 			return -1;
 		}
 
 		printf("Connecton established.\n");
-		id = client_authorization(conn_fd, &file_len);
+		if ((error_code = client_authorization(conn_fd, &id, &file_len))) {
+			close(file);
+			close(sock_fd);
+			return error_code;
+		}
 
 		if (!id) {
 			id = get_id();
-			if (give_client_id(id, conn_fd)) {
+			if ((error_code = give_client_id(id, conn_fd))) {
 				close(file);
 				close(sock_fd);
-				free(buf);
-				free(args);
-				return -1;
-			} // add num_last_packet_recv in param
+				return error_code;
+			} 
 
 			curr_client_id = id;
-			printf("curr id: %d\n", curr_client_id);
 		} else if (id != curr_client_id) {
 
-			if (give_client_id(0, conn_fd)) {
+			if ((error_code = give_client_id(0, conn_fd))) {
 				close(file);
 				close(sock_fd);
-				free(buf);
-				free(args);
-				return -1;
-			} //send to client message with id 0
+				return error_code;
+			}
 
 			is_server_available = false;
 		} else if (id == curr_client_id) {
-			give_client_id(id, conn_fd);
+			if ((error_code = give_client_id(id, conn_fd))) {
+				close(file);
+				close(sock_fd);
+				return error_code;
+			}
 		}
 
 		printf("SERVER: current id: %d, id: %d\n", curr_client_id, id);
 
 		if (is_server_available) {
 			printf("Download starts...\n");
-			download_res = download(conn_fd, &num_last_packet_recv, file, &file_len, &finish);
-			printf("Download is completed. File of %d length is received.\n", download_res);
+			if ((error_code = download(conn_fd, &num_last_packet_recv, file, &file_len, &finish))) {
+				close(file);
+				close(sock_fd);				
+			}
+			printf("Download is completed. File of %d length is received.\n", file_len);
 		}
 
 		is_server_available = true;
 		close(conn_fd);
+
 		if (finish) {
 			break;
 		}
+
 	} while (conn_fd > 0);
-	free(args);
-	free(buf);
+
 	close(sock_fd);
 	return 0;
 }
