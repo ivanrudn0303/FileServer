@@ -52,10 +52,28 @@ int main (int argc, char const *argv[]) {
 
 		if (!id) {
 			id = get_id();
-			give_client_id(id, conn_fd); // add num_last_packet_recv in param
+			printf("id: %d\n", id);
+			if (give_client_id(id, conn_fd)) {
+				printf("KEK\n");
+				close(file);
+				close(sock_fd);
+				free(buf);
+				free(args);
+				return -1;
+			} // add num_last_packet_recv in param
+
 			curr_client_id = id;
+			printf("curr id: %d\n", curr_client_id);
 		} else if (id != curr_client_id) {
-			give_client_id(0, conn_fd); //send to client message with id 0
+
+			if (give_client_id(0, conn_fd)) {
+				close(file);
+				close(sock_fd);
+				free(buf);
+				free(args);
+				return -1;
+			} //send to client message with id 0
+
 			is_server_available = false;
 		} else if (id == curr_client_id) {
 			give_client_id(id, conn_fd);

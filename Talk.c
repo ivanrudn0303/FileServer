@@ -79,7 +79,7 @@ int error_handler(int conn_fd, char* error_string) {
                 printf("ERROR_MSG_ERROR: Error occurred while sending error message...\n");
                 return -1;
         } else if (res == -1) {
-                printf("ERROR_MSG_ERROR: Sending was interrupted, error code %d.\n", errno);
+                printf("ERROR_MSG_ERROR: %s.\n", strerror(errno));
                 return -1;
         }
 
