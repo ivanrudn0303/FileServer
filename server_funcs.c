@@ -78,7 +78,7 @@ int client_authorization(int conn_fd, uint32_t* id, size_t* file_len) {
 }
 
 
-int give_client_id(int id, int conn_fd) {
+int give_client_id(int id, uint32_t pos, int conn_fd) {
   int buf_size = sizeof(message) + sizeof(uint32_t) * 2;
   char buf[sizeof(message) + sizeof(uint32_t) * 2];
   int error_code;
@@ -88,7 +88,7 @@ int give_client_id(int id, int conn_fd) {
   ((uint32_t*)buf)[0] = AUTH_MESSAGE;
   ((uint32_t*)buf)[1] = sizeof(uint32_t) * 2;
   ((uint32_t*)buf)[2] = id;
-  ((uint32_t*)buf)[3] = 0;
+  ((uint32_t*)buf)[3] = pos;
   res = wsend(MSG_TIMEOUT, conn_fd, &buf, sizeof(buf), 0);
 
   if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, buf_size))) {

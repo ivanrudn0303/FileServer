@@ -49,9 +49,9 @@ int main (int argc, char const *argv[]) {
 			return error_code;
 		}
 
-		if (!id) {
+		if (!id && -1 == curr_client_id) {
 			id = get_id();
-			if ((error_code = give_client_id(id, conn_fd))) {
+			if ((error_code = give_client_id(id, 0, conn_fd))) {
 				close(file);
 				close(sock_fd);
 				return error_code;
@@ -60,7 +60,7 @@ int main (int argc, char const *argv[]) {
 			curr_client_id = id;
 		} else if (id != curr_client_id) {
 
-			if ((error_code = give_client_id(0, conn_fd))) {
+			if ((error_code = give_client_id(0, 0, conn_fd))) {
 				close(file);
 				close(sock_fd);
 				return error_code;
@@ -68,11 +68,12 @@ int main (int argc, char const *argv[]) {
 
 			is_server_available = false;
 		} else if (id == curr_client_id) {
-			if ((error_code = give_client_id(id, conn_fd))) {
+			if ((error_code = give_client_id(id, num_last_packet_recv * SIZE_OF_DATA, conn_fd))) {
 				close(file);
 				close(sock_fd);
 				return error_code;
 			}
+			printf("continue from %d\n", num_last_packet_recv * SIZE_OF_DATA);
 		}
 
 		printf("SERVER: current id: %d, id: %d\n", curr_client_id, id);
