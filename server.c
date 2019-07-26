@@ -21,7 +21,6 @@ int main (int argc, char const *argv[]) {
 		return -1;
 	}
 
-	free(args);
 	int len = sizeof(cliaddr);
 	int id = 0;
 	bool is_server_available = true;
@@ -29,6 +28,7 @@ int main (int argc, char const *argv[]) {
 	int curr_client_id = -1;
 	int error_code = 0;
 	file = open(args->file, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
+	free(args);
 
 	//REDO: reject all other clients
 	//send them message with 0 id

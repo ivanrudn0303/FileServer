@@ -145,7 +145,7 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bo
 
         for (; chunk < sizeof_buf; chunk += SIZE_TO_WRITE) {
 
-          if (sizeof_buf - chunk < SIZE_TO_WRITE) {
+          if ((sizeof_buf - chunk) < SIZE_TO_WRITE) {
             res = write(file, download_buf + chunk, sizeof_buf - chunk);
             expected_size = sizeof_buf - chunk;
           } else
