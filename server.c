@@ -81,10 +81,9 @@ int main (int argc, char const *argv[]) {
 		if (is_server_available) {
 			printf("Download starts...\n");
 			if ((error_code = download(conn_fd, &num_last_packet_recv, file, &file_len, &finish))) {
-				close(file);
-				close(sock_fd);				
-			}
-			printf("Download is completed. File of %d length is received.\n", file_len);
+				printf("Download Error: code = %d\n", error_code);
+			} else
+				printf("Download is completed. File of %d length is received.\n", file_len);
 		}
 
 		is_server_available = true;
@@ -95,7 +94,7 @@ int main (int argc, char const *argv[]) {
 		}
 
 	} while (conn_fd > 0);
-
+	close(file);
 	close(sock_fd);
 	return 0;
 }

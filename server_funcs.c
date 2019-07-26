@@ -72,7 +72,7 @@ int client_authorization(int conn_fd, uint32_t* id, size_t* file_len) {
 
   }
 
-  printf("Authorization is completed. Client id: %d, file length: %zu\n", id, *file_len);
+  printf("Authorization is completed. Client id: %d, file length: %zu\n", *id, *file_len);
   free(buf);
   return 0;
 }
