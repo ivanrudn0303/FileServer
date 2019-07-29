@@ -41,9 +41,9 @@ int client_authorization(int conn_fd, uint32_t* id, size_t* file_len) {
   char error_str[1024];
   char func_name [] = "SERVER (client_authorization) error:";
   int error_code;
-  int res = wrecv(MSG_TIMEOUT, conn_fd, &msg, sizeof(message), 0);
+  int res = wrecv(MSG_TIMEOUT, conn_fd, &msg, SIZE_OF_MESSAGE, 0);
 
-  if((error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof(message)))) {
+  if (error_code = process_connection_errors(conn_fd, res, error_str, func_name, SIZE_OF_MESSAGE)) {
     return error_code;
   }
 
@@ -53,45 +53,40 @@ int client_authorization(int conn_fd, uint32_t* id, size_t* file_len) {
     return ERROR_AUTH; 
   }
 
-  char* buf = (char*)malloc(msg.size);
-  res = wrecv(MSG_TIMEOUT, conn_fd, buf, msg.size, 0);
+  res = wrecv(MSG_TIMEOUT, conn_fd, &msg.auth_params, msg.size, 0);
 
   if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, msg.size))) {
-    free(buf);
     return error_code;
   }
   
-  *id = ((uint32_t*)buf)[0];
-  *file_len = ((uint32_t*)buf)[1];
+  *id = msg.auth_params.id;
+  *file_len = msg.auth_params.size;
 
   if (*file_len == 0) {
     sprintf(error_str, "%s file length equals 0, disconnect client.\n", func_name);
     error_handler(conn_fd, error_str);
-    free(buf);
     return ERROR_AUTH;
 
   }
 
   printf("Authorization is completed. Client id: %d, file length: %zu\n", *id, *file_len);
-  free(buf);
   return 0;
 }
 
 
 int give_client_id(int id, uint32_t pos, int conn_fd) {
-  int buf_size = sizeof(message) + sizeof(uint32_t) * 2;
-  char buf[sizeof(message) + sizeof(uint32_t) * 2];
+  message msg;
   int error_code;
   int res;
   char error_str[1024];
   char func_name [] = "SERVER (give_client_id) error:";
-  ((uint32_t*)buf)[0] = AUTH_MESSAGE;
-  ((uint32_t*)buf)[1] = sizeof(uint32_t) * 2;
-  ((uint32_t*)buf)[2] = id;
-  ((uint32_t*)buf)[3] = pos;
-  res = wsend(MSG_TIMEOUT, conn_fd, &buf, sizeof(buf), 0);
+  msg.type = AUTH_MESSAGE;
+  msg.size = SIZE_OF_AUTH;
+  msg.auth_params.id = id;
+  msg.auth_params.size = pos;
+  res = wsend(MSG_TIMEOUT, conn_fd, &msg, SIZE_OF_MESSAGE + SIZE_OF_AUTH, 0);
 
-  if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, buf_size))) {
+  if (error_code = process_connection_errors(conn_fd, res, error_str, func_name, SIZE_OF_MESSAGE + SIZE_OF_AUTH)) {
     return error_code;
   }
 
@@ -102,7 +97,6 @@ int give_client_id(int id, uint32_t pos, int conn_fd) {
 
 int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bool* finish) {
   char write_buf[SIZE_TO_WRITE];
-  char download_buf[SIZE_OF_DATA];
   int error_code;
   char error_str[1024];
   char func_name [] = "SERVER (download) error:";
@@ -115,9 +109,9 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bo
   printf("File length: %d\n", *file_len);
 
   while (is_download_in_progress) {
-    res = wrecv(MSG_TIMEOUT, conn_fd, &msg, sizeof(message), 0);
+    res = wrecv(MSG_TIMEOUT, conn_fd, &msg, SIZE_OF_MESSAGE, 0);
 
-    if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof(message)))) {
+    if (error_code = process_connection_errors(conn_fd, res, error_str, func_name, SIZE_OF_MESSAGE)) {
       return error_code;
     }
 
@@ -133,7 +127,7 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bo
         }
 
         printf("Start download...\n");
-        res = wrecv(MSG_TIMEOUT, conn_fd, &download_buf, sizeof_buf, 0);
+        res = wrecv(MSG_TIMEOUT, conn_fd, msg.data, sizeof_buf, 0);
 
         if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof_buf))) {
           return error_code;
@@ -146,10 +140,10 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bo
         for (; chunk < sizeof_buf; chunk += SIZE_TO_WRITE) {
 
           if ((sizeof_buf - chunk) < SIZE_TO_WRITE) {
-            res = write(file, download_buf + chunk, sizeof_buf - chunk);
+            res = write(file, msg.data + chunk, sizeof_buf - chunk);
             expected_size = sizeof_buf - chunk;
           } else
-            res = write(file, download_buf + chunk, SIZE_TO_WRITE);
+            res = write(file, msg.data + chunk, SIZE_TO_WRITE);
 
           if ((error_code = process_write_errors(conn_fd, res, error_str, func_name, expected_size))) {
             return error_code;
@@ -166,10 +160,10 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bo
 
         if (*finish) {
           msg.type = FINISH_MESSAGE;
-          msg.size = 0;
-          res = wsend(MSG_TIMEOUT, conn_fd, &msg, sizeof(message), 0);
+          msg.size = SIZE_OF_FINISH;
+          res = wsend(MSG_TIMEOUT, conn_fd, &msg, SIZE_OF_MESSAGE + SIZE_OF_FINISH, 0);
 
-          if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof(message)))) {
+          if (error_code = process_connection_errors(conn_fd, res, error_str, func_name, SIZE_OF_MESSAGE + SIZE_OF_FINISH)) {
             return error_code;
           }
         }
@@ -181,21 +175,21 @@ int download(int conn_fd, int* num_last_packet_recv, int file, int* file_len, bo
       case ERROR_MESSAGE:
         printf("Error occurred on client: ");
 
-        res = wrecv(MSG_TIMEOUT, conn_fd, &error_str, msg.size, 0);
+        res = wrecv(MSG_TIMEOUT, conn_fd, msg.err_str, msg.size, 0);
 
-        if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof(message)))) {
+        if (error_code = process_connection_errors(conn_fd, res, msg.err_str, func_name, SIZE_OF_MESSAGE)) {
           return error_code;
         }
 
-        printf("%s\n", error_str);
+        printf("%s\n", msg.err_str);
         return ERROR_CLIENT;
 
       default:
-        sprintf(error_str, "Error, unexpected message type: %d.\n", msg.type);
+        sprintf(msg.err_str, "Error, unexpected message type: %d.\n", msg.type);
 
-        res = wsend(MSG_TIMEOUT, conn_fd, &error_str, strlen(error_str), 0);
+        res = wsend(MSG_TIMEOUT, conn_fd, msg.err_str, strlen(error_str) + sizeof('\0'), 0);
 
-        if ((error_code = process_connection_errors(conn_fd, res, error_str, func_name, sizeof(message)))) {
+        if (error_code = process_connection_errors(conn_fd, res, msg.err_str, func_name, SIZE_OF_MESSAGE)) {
           return error_code;
         }
 

@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <poll.h>
 #include <stddef.h>
+#include <string.h>
 #include <sys/time.h>
 
 ssize_t wsend(int timeout, int sockfd, const void *buf, size_t len, int flags)
@@ -73,11 +74,11 @@ ssize_t wrecv(int timeout, int sockfd, const void *buf, size_t len, int flags)
 int error_handler(int conn_fd, char* error_string) {
         printf("%s\n", error_string);
         int err_str_len = strlen(error_string) + sizeof('\0');
-        char buf [1024];
-        ((uint32_t*)buf)[0] = ERROR_MESSAGE;
-        ((uint32_t*)buf)[1] = err_str_len;
-        memcpy(buf + sizeof(uint32_t) * 2, error_string, err_str_len);  
-        int res = wsend(100, conn_fd, buf, sizeof(message) + err_str_len, 0);
+        message msg;
+        msg.type = ERROR_MESSAGE;
+        msg.size = err_str_len;
+        memcpy(msg.err_str, error_string, err_str_len);
+        int res = wsend(100, conn_fd, &msg, SIZE_OF_MESSAGE + err_str_len, 0);
 
         if (!res) {
                 printf("ERROR_MSG_ERROR: Error occurred while sending error message...\n");
