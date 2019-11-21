@@ -34,7 +34,7 @@ then call client:
 ./build/client -o Send.txt -p 8888 -a 127.0.0.1
 ```
 ## Testing
-### to create tests:
+### to build tests:
 ```Bash
 make test_init
 make test_talk
