@@ -1,5 +1,5 @@
 CC = gcc
-BASE = ..
+BASE = ../src
 INC = ${BASE}
 
 all: client server test_init test_talk
